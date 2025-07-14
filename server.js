@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 // Database setup (SQLite)
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('logs.db'); // File-based for persistence (Render may reset, but better than memory)
+const db = new sqlite3.Database('/data/logs.db'); // Use mount path
 
 db.serialize(() => {
   db.run('CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, partNumber TEXT, action TEXT, notes TEXT, timestamp TEXT)');
