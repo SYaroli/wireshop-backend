@@ -2,22 +2,33 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const jobRoutes = require('./routes/jobs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Database setup (SQLite)
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('/data/logs.db'); // Use mount path
+const dbPath = process.env.DATABASE_PATH || '/data/logs.db';
+const db = new sqlite3.Database(dbPath, err => {
+  if (err) {
+    console.error('Error connecting to DB:', err);
+  } else {
+    console.log('Connected to SQLite at', dbPath);
+  }
+});
 
 db.serialize(() => {
-  db.run('CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, partNumber TEXT, action TEXT, notes TEXT, timestamp TEXT)');
+  db.run('CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, partNumber TEXT, action TEXT, notes TEXT, timestamp TEXT)', err => {
+    if (err) {
+      console.error('Error creating table:', err);
+    } else {
+      console.log('Logs table ready');
+    }
+  });
 });
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/api/jobs', jobRoutes);
 
 // GET / - Test endpoint
 app.get('/', (req, res) => {
@@ -35,6 +46,7 @@ app.post('/api/log', (req, res) => {
         console.error('Error inserting log:', err);
         return res.status(500).json({ error: 'Failed to save log' });
       }
+      console.log('Log inserted, ID:', this.lastID);
       res.json({ success: true, id: this.lastID });
     }
   );
@@ -47,6 +59,7 @@ app.get('/api/logs', (req, res) => {
       console.error('Error fetching logs:', err);
       return res.status(500).json({ error: 'Failed to fetch logs' });
     }
+    console.log('Fetched', rows.length, 'logs');
     res.json(rows);
   });
 });
@@ -58,7 +71,20 @@ app.delete('/api/delete-logs', (req, res) => {
       console.error('Error deleting logs:', err);
       return res.status(500).json({ error: 'Failed to delete logs' });
     }
+    console.log('All logs deleted');
     res.json({ success: true });
+  });
+});
+
+// GET /api/test-db - Test DB count
+app.get('/api/test-db', (req, res) => {
+  db.get('SELECT COUNT(*) as count FROM logs', (err, row) => {
+    if (err) {
+      console.error('Error testing DB:', err);
+      return res.status(500).json({ error: 'DB test failed' });
+    }
+    console.log('DB test: ', row.count, 'logs');
+    res.json({ count: row.count });
   });
 });
 
